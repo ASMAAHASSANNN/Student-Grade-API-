@@ -1,0 +1,115 @@
+openapi: 3.0.3
+info:
+  title: Student Grades API
+  version: 1.0.0
+  description: A simple REST API for managing student grades.
+
+paths:
+  /students/{student_id}/grades:
+    post:
+      summary: Add a grade for a student
+      parameters:
+        - name: student_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeCreate'
+      responses:
+        "201":
+          description: Grade added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Grade'
+        "400":
+          description: Invalid input
+        "422":
+          description: Validation error
+
+    get:
+      summary: Get all grades for a student
+      parameters:
+        - name: student_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: List of grades
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  student_id:
+                    type: integer
+                  grades:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Grade'
+        "404":
+          description: Student has no grades
+
+  /students/{student_id}/average:
+    get:
+      summary: Get the average grade for a student
+      parameters:
+        - name: student_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Student average returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  student_id:
+                    type: integer
+                  average:
+                    type: number
+                    format: float
+        "404":
+          description: Student has no grades
+
+components:
+  schemas:
+    GradeCreate:
+      type: object
+      required:
+        - course
+        - score
+        - semester
+      properties:
+        course:
+          type: string
+          minLength: 2
+          maxLength: 50
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+        semester:
+          type: string
+          enum: [Semester 1, Semester 2]
+
+    Grade:
+      allOf:
+        - $ref: '#/components/schemas/GradeCreate'
+        - type: object
+          properties:
+            grade_id:
+              type: integer
