@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, Path
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from datetime import date
 
 app = FastAPI(
     title="Student Grades API",
@@ -22,6 +23,7 @@ class GradeCreate(BaseModel):
     course: str = Field(..., min_length=2, max_length=50, example="Software Engineering")
     score: float = Field(..., ge=0, le=100, example=78.5)
     semester: Literal["Semester 1", "Semester 2"]
+    due_date: date = Field(..., example="2026-05-20")
 
 
 class Grade(GradeCreate):
@@ -88,7 +90,8 @@ def add_grade(
         "grade_id": grade_counter,
         "course": grade.course,
         "score": grade.score,
-        "semester": grade.semester
+        "semester": grade.semester,
+        "due_date": grade.due_date
     }
 
     student_grades.append(new_grade)
@@ -133,3 +136,44 @@ def get_student_average(
         "student_id": student_id,
         "average": average
     }
+
+
+@app.delete(
+    "/students/{student_id}/grades/{grade_id}",
+    status_code=204,
+    responses={
+        404: {"model": ErrorResponse},
+        400: {"model": ErrorResponse}
+    }
+)
+def delete_grade(
+    student_id: Annotated[int, Path(gt=0)],
+    grade_id: Annotated[int, Path(gt=0)]
+):
+    """
+    Deletes a specific grade for a student.
+    Returns 204 No Content on success.
+    """
+    if student_id not in grades_db:
+        raise HTTPException(status_code=404, detail="Student not found.")
+
+    student_grades = grades_db[student_id]
+    
+    # Find the grade by its ID
+    grade_to_remove = None
+    for g in student_grades:
+        if g["grade_id"] == grade_id:
+            grade_to_remove = g
+            break
+    
+    if not grade_to_remove:
+        raise HTTPException(status_code=404, detail="Grade ID not found for this student.")
+
+    # Remove the grade from the list
+    student_grades.remove(grade_to_remove)
+    
+    # If the student has no grades left, you could optionally remove the student entry
+    if not student_grades:
+        del grades_db[student_id]
+
+    return None # 204 status code requires no response body
